@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"time"
+	"io/ioutil"
 
 	"github.com/hashicorp/http-echo/version"
 )
@@ -16,6 +17,7 @@ import (
 var (
 	listenFlag  = flag.String("listen", ":5678", "address and port to listen")
 	textFlag    = flag.String("text", "", "text to put on the webpage")
+	pauseFlag   = flag.Int("pause", 0, "pause millis on each request")
 	versionFlag = flag.Bool("version", false, "display version information")
 
 	// stdoutW and stderrW are for overriding in test.
@@ -46,7 +48,7 @@ func main() {
 
 	// Flag gets printed as a page
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", httpLog(stdoutW, withAppHeaders(httpEcho(*textFlag))))
+	mux.HandleFunc("/", httpLog(stdoutW, withAppHeaders(httpEcho(*textFlag, *pauseFlag))))
 
 	// Health endpoint
 	mux.HandleFunc("/health", withAppHeaders(httpHealth()))
@@ -82,9 +84,13 @@ func main() {
 	os.Exit(2)
 }
 
-func httpEcho(v string) http.HandlerFunc {
+func httpEcho(text string, pause int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, v)
+        ioutil.ReadAll(r.Body)
+	    if pause >= 0 {
+	        time.Sleep(time.Duration(pause) * time.Millisecond)
+	    }
+		fmt.Fprintln(w, text)
 	}
 }
 
